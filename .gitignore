@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+
+build/
+dist/
+*.spec
+
+# USB captures used for protocol reverse-engineering; may contain other devices' traffic
+*.pcapng
+*.pcap

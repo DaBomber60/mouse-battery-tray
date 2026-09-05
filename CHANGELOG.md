@@ -4,6 +4,17 @@ All notable changes to the Mouse Battery Tray project are documented in this fil
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🚀 New Device Support
+
+- **Pulsar LINK 2 Dongle:** Added an active-query protocol handler (`VID 0x3710`, `PID 0x5504`). The dongle sends no unsolicited telemetry, so it is polled by writing a 17-byte command to the `0xff02` vendor collection (report ID `0x08`, command `0x04`) and parsing the reply. Battery level is read from offset 6 (the firmware's own estimate, in 5% steps) and charging state from offset 7; the reply also carries pack voltage in mV at offsets 8-9. All packets are validated with the `(0x55 - sum) & 0xFF` checksum.
+- **Sleep-Aware Polling:** The LINK 2 stops answering once the mouse sleeps on idle, which is the default. A missing reply now retains the last known level instead of reporting the battery as unavailable.
+- **Feinmann F01:** Added mapping for the **Feinmann F01 Noctua Edition** in wired mode (`VID 0x3710`, `PID 0x7507`).
+- **Passive Scan Guard:** Added `ACTIVE_PROTOCOL_DEVICES` so devices with dedicated query protocols are no longer claimed by the passive `find_device_path()` scan, which previously left them stuck on `--`.
+
+---
+
 ## [v1.2.2] - 2026-07-25
 
 ### 🚀 New Device Support & Protocols

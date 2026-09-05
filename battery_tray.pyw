@@ -22,6 +22,8 @@ from config import (
     is_light_mode,
     get_battery_history,
     set_battery_history,
+    get_peak_millivolts,
+    set_peak_millivolts,
 )
 from updater import (
     __version__,
@@ -36,6 +38,8 @@ from devices import (
     read_wlmouse_battery,
     find_razer,
     read_razer_battery,
+    find_pulsar,
+    read_pulsar_battery,
     BEKEN_DEVICE_NAMES,
 )
 from icon_drawer import get_icon_data
@@ -62,6 +66,10 @@ class BatteryTrayApp:
         saved_history, saved_anchored = get_battery_history()
         self.battery_history: List[Tuple[float, int]] = saved_history
         self.is_anchored: bool = saved_anchored
+
+        # Pack voltage, reported by devices that expose it (Pulsar LINK 2)
+        self.last_millivolts: Optional[int] = None
+        self.peak_millivolts: int = get_peak_millivolts()
         
         # Update checker state
         self.latest_version: Optional[str] = None
@@ -302,6 +310,13 @@ class BatteryTrayApp:
         items.append(pystray.MenuItem("Exit", self.on_exit))
         return pystray.Menu(*items)
 
+    def get_voltage_str(self) -> Optional[str]:
+        if self.last_millivolts is None:
+            return None
+        if self.peak_millivolts > 0:
+            return f"{self.last_millivolts}/{self.peak_millivolts} mV"
+        return f"{self.last_millivolts} mV"
+
     def update_tray(self):
         if not self.icon:
             return
@@ -310,22 +325,27 @@ class BatteryTrayApp:
         self.icon.icon = get_icon_data(self.status, self.last_battery, self._icon_cache)
         
         model = self.current_model or "Mouse"
+        volts = self.get_voltage_str()
         if self.status == "disconnected":
             self.icon.title = f"{model}: Disconnected"
         elif self.status == "connected" and self.last_battery < 0:
             self.icon.title = f"{model}: Waiting for battery reading..."
         elif self.status == "charging" and self.last_battery < 0:
             self.icon.title = f"{model}: Charging/Wired"
-        elif self.status == "charging":
-            self.icon.title = f"{model}: {self.last_battery}% (charging)"
         elif self.status == "unknown":
             self.icon.title = f"{model}: detected (battery unavailable)"
         else:
-            est_str = self.get_battery_estimate_str()
-            if est_str:
-                self.icon.title = f"{model}: {self.last_battery}% ({est_str})"
+            details = []
+            if self.status == "charging":
+                details.append("charging")
             else:
-                self.icon.title = f"{model}: {self.last_battery}%"
+                est_str = self.get_battery_estimate_str()
+                if est_str:
+                    details.append(est_str)
+            if volts:
+                details.append(volts)
+            suffix = f" ({', '.join(details)})" if details else ""
+            self.icon.title = f"{model}: {self.last_battery}%{suffix}"
 
     def poll_loop(self):
         last_trim = time.time()
@@ -345,7 +365,26 @@ class BatteryTrayApp:
             if path:
                 self._handle_standard_device(path, mode, model_name)
                 continue
-                
+
+            pulsar_path, pulsar_name, pulsar_pid = find_pulsar()
+            if pulsar_path:
+                self.current_model = pulsar_name
+                battery, charging, millivolts = read_pulsar_battery(pulsar_path)
+                if millivolts:
+                    self.last_millivolts = millivolts
+                    if millivolts > self.peak_millivolts:
+                        self.peak_millivolts = millivolts
+                        set_peak_millivolts(millivolts)
+                if battery is not None:
+                    self.update_battery_level(battery, bool(charging))
+                elif self.last_battery < 0:
+                    # Silence normally just means the mouse is asleep, so an
+                    # established reading is kept rather than cleared.
+                    self.status = "unknown"
+                    self.update_tray()
+                time.sleep(10)
+                continue
+
             wl_path, wl_name, wl_pid = find_wlmouse()
             if wl_path:
                 self.current_model = wl_name

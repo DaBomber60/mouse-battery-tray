@@ -111,6 +111,25 @@ def set_show_estimate(enabled: bool) -> bool:
         return False
 
 
+def get_peak_millivolts() -> int:
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_SETTINGS_KEY, 0, winreg.KEY_READ) as key:
+            val, _ = winreg.QueryValueEx(key, "PeakMillivolts")
+            return int(val)
+    except (FileNotFoundError, OSError, ValueError):
+        return 0
+
+
+def set_peak_millivolts(millivolts: int) -> bool:
+    try:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, REG_SETTINGS_KEY) as key:
+            winreg.SetValueEx(key, "PeakMillivolts", 0, winreg.REG_DWORD, int(millivolts))
+        return True
+    except Exception as e:
+        print(f"Error saving peak voltage: {e}")
+        return False
+
+
 def is_light_mode() -> bool:
     """Detect if Windows taskbar/system theme is set to Light Mode."""
     try:

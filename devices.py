@@ -7,6 +7,9 @@ from typing import Optional, Tuple, List
 # =============================================================================
 SUPPORTED_VIDS = {0x1d57, 0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770, 0x1532}
 
+# Handled by dedicated active-query protocols below; the passive scan must not claim them.
+ACTIVE_PROTOCOL_DEVICES = {(0x3710, 0x5504)}
+
 BEKEN_DEVICE_NAMES = {
     0x55: "Attack Shark X11",
     0x10: "Attack Shark R1",
@@ -46,6 +49,11 @@ SUPPORTED_DEVICES = {
     # Pulsar 8K Dongle Gen.2 (Thanks to @CptNinja)
     (0x3710, 0x5406): ("Pulsar 8K Dongle Gen.2", "wireless"),
     0x5406: ("Pulsar 8K Dongle Gen.2", "wireless"),
+
+    # Feinmann F01 (incl. Noctua Edition) in wired mode.
+    # Its wireless dongle (0x5504) uses the Pulsar LINK 2 protocol further down.
+    (0x3710, 0x7507): ("Feinmann F01 Noctua Edition", "wired"),
+    0x7507: ("Feinmann F01 Noctua Edition", "wired"),
 
     # VXE R1 Series (R1 / SE / SE+) (Thanks to @nzeck1)
     (0x3554, 0xf58e): ("VXE R1 Series", "wireless"),
@@ -198,6 +206,8 @@ def find_device_path() -> Tuple[Optional[str], Optional[str], Optional[str]]:
         vid = d['vendor_id']
         pid = d['product_id']
         if vid in SUPPORTED_VIDS:
+            if (vid, pid) in ACTIVE_PROTOCOL_DEVICES:
+                continue
             prod_string = str(d.get('product_string', '')).lower()
             # Ignore keyboards, microphones, and audio peripherals sharing the same VID
             if any(k in prod_string for k in ['keyboard', 'microphone', 'audio', 'headset', 'sound']):
@@ -337,6 +347,93 @@ def read_razer_battery(path: str) -> Tuple[Optional[int], Optional[bool]]:
                             return batt, charging
             time.sleep(0.03)
         return None, None
+    finally:
+        try:
+            dev.close()
+        except Exception:
+            pass
+
+
+# =============================================================================
+# Pulsar LINK 2 Protocol (16-byte Output/Input reports on usage page 0xff02)
+#
+# The dongle never sends unsolicited telemetry, so it must be polled: write the
+# 17-byte query, then read the reply off the same collection.
+# Packet layout, captured from Pulsar's own configuration software:
+#   query [0x08, cmd, 0x00 * 14, checksum]
+#   reply [0x08, cmd, 0, 0, 0, status, fw_est, charging, mV_hi, mV_lo, 0 * 6, csum]
+#
+# Byte 6 is the firmware's own battery estimate, quantised to 5% steps, and
+# tracks the vendor tools to within 3% for most of the range. It reaches 100 by
+# charge-taper detection rather than voltage alone, flipping 95 -> 100 while the
+# pack voltage was falling from 4176 to 4154 mV. Note it then decays back to 95
+# as the pack settles post-charge, where the vendor tools latch at 100.
+# A voltage-derived level was tried instead and read 14 points low at 4000 mV.
+#
+# The mouse stops answering once it sleeps on idle, so a missing reply means
+# "asleep", not "disconnected" -- callers should keep the previous reading.
+# =============================================================================
+PULSAR_VID = 0x3710
+PULSAR_USAGE_PAGE = 0xff02
+PULSAR_REPORT_ID = 0x08
+PULSAR_CMD_BATTERY = 0x04
+
+PULSAR_DEVICES = {
+    0x5504: "Pulsar LINK 2 Dongle",
+}
+
+
+def _pulsar_checksum(pkt: List[int]) -> int:
+    """Trailing byte of every packet is 0x55 minus the sum of the preceding 16."""
+    return (0x55 - sum(pkt[:16])) & 0xFF
+
+
+def _pulsar_build(cmd: int) -> List[int]:
+    pkt = [PULSAR_REPORT_ID, cmd] + [0x00] * 14
+    pkt.append(_pulsar_checksum(pkt))
+    return pkt
+
+
+def find_pulsar() -> Tuple[Optional[str], Optional[str], Optional[int]]:
+    """Return (path, model_name, pid) for the Pulsar LINK 2 vendor collection."""
+    for d in hid.enumerate(PULSAR_VID):
+        pid = d['product_id']
+        if pid in PULSAR_DEVICES and d.get('usage_page') == PULSAR_USAGE_PAGE:
+            return d['path'], PULSAR_DEVICES[pid], pid
+    return None, None, None
+
+
+def read_pulsar_battery(path: str) -> Tuple[Optional[int], Optional[bool], Optional[int]]:
+    """Active: send the 0x04 battery query. Returns (battery%, charging, millivolts)."""
+    try:
+        dev = hid.device()
+        dev.open_path(path.encode('utf-8') if isinstance(path, str) else path)
+        dev.set_nonblocking(True)
+    except OSError:
+        return None, None, None
+
+    try:
+        try:
+            dev.write(bytes(_pulsar_build(PULSAR_CMD_BATTERY)))
+        except OSError:
+            return None, None, None
+
+        deadline = time.time() + 1.5
+        while time.time() < deadline:
+            try:
+                resp = dev.read(17)
+            except OSError:
+                break
+            if resp:
+                b = list(resp)
+                if (len(b) >= 17 and b[0] == PULSAR_REPORT_ID
+                        and b[1] == PULSAR_CMD_BATTERY
+                        and b[16] == _pulsar_checksum(b)):
+                    batt = b[6]
+                    if 0 <= batt <= 100:
+                        return batt, bool(b[7]), (b[8] << 8) | b[9]
+            time.sleep(0.01)
+        return None, None, None
     finally:
         try:
             dev.close()

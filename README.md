@@ -28,6 +28,8 @@ The application officially recognizes the following models, with dynamic fallbac
 | **Attack Shark** | X11 / X6 / R1 / X3 | 🟢 | 🟢 | Dynamic model resolution |
 | **Pulsar** | Xlite / X2 Series | 🟢 | 🟢 | CompX OEM |
 | | 8K Dongle Gen.2 | 🟢 | 🟡 | 8K Dongle (`VID 0x3710`) |
+| | LINK 2 Dongle | 🟢 | 🟡 | Active query, vendor page `0xff02` (`PID 0x5504`) |
+| **Feinmann** | F01 / F01 Noctua Edition | 🟢 | 🟢 | Via Pulsar LINK 2 Dongle (`PID 0x7507` wired) |
 | **VXE** | R1 Series (R1 / SE / SE+) | 🟢 | 🟢 | Dongles (`VID 0x3554`, `0x320f`, `0x3537`) |
 | **Incott** | G24 Pro | 🟢 | 🟢 | PixArt 8K Dongle (`VID 0x093a`) |
 | **Hitscan** | Hyperlight | 🟢 | 🟡 | 8K Dongle (`VID 0x3770`) |
@@ -52,9 +54,14 @@ If you want to manually add support yourself, you can simply append your Product
 
 ```python
 SUPPORTED_DEVICES = {
+    # Preferred: exact (VID, PID) match
+    (0xYOUR_VID_HEX, 0xYOUR_PID_HEX): ("Your Mouse Name", "wireless"),
+    # Optional: bare PID fallback for OEM clones sharing the same firmware
     0xYOUR_PID_HEX: ("Your Mouse Name", "wireless"),
 }
 ```
+
+If your Vendor ID is not already listed in `SUPPORTED_VIDS` at the top of `devices.py`, add it there too — the HID scan in `find_device_path()` only inspects endpoints belonging to a known VID.
 
 ---
 
