@@ -73,44 +73,6 @@ def set_startup(enabled: bool) -> bool:
         return False
 
 
-def get_alert_threshold() -> int:
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_SETTINGS_KEY, 0, winreg.KEY_READ) as key:
-            val, _ = winreg.QueryValueEx(key, "AlertThreshold")
-            return int(val)
-    except (FileNotFoundError, OSError, ValueError):
-        return 20  # Default 20%
-
-
-def set_alert_threshold(threshold: int) -> bool:
-    try:
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, REG_SETTINGS_KEY) as key:
-            winreg.SetValueEx(key, "AlertThreshold", 0, winreg.REG_DWORD, int(threshold))
-        return True
-    except Exception as e:
-        print(f"Error saving alert threshold: {e}")
-        return False
-
-
-def get_show_estimate() -> bool:
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_SETTINGS_KEY, 0, winreg.KEY_READ) as key:
-            val, _ = winreg.QueryValueEx(key, "ShowEstimate")
-            return bool(val)
-    except (FileNotFoundError, OSError, ValueError):
-        return True  # Enabled by default
-
-
-def set_show_estimate(enabled: bool) -> bool:
-    try:
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, REG_SETTINGS_KEY) as key:
-            winreg.SetValueEx(key, "ShowEstimate", 0, winreg.REG_DWORD, 1 if enabled else 0)
-        return True
-    except Exception as e:
-        print(f"Error saving estimate setting: {e}")
-        return False
-
-
 def get_peak_millivolts() -> int:
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_SETTINGS_KEY, 0, winreg.KEY_READ) as key:
@@ -142,33 +104,5 @@ def is_light_mode() -> bool:
             val, _ = winreg.QueryValueEx(key, "SystemUsesLightTheme")
             return val == 1
     except (FileNotFoundError, OSError, ValueError):
-        return False
-
-
-def get_battery_history() -> tuple:
-    """Load persisted (history_list, is_anchored) from Windows Registry."""
-    import json
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_SETTINGS_KEY, 0, winreg.KEY_READ) as key:
-            val, _ = winreg.QueryValueEx(key, "BatteryHistory")
-            anchored_val, _ = winreg.QueryValueEx(key, "BatteryAnchored")
-            raw_list = json.loads(val)
-            parsed = [(float(t), int(b)) for t, b in raw_list if isinstance(t, (int, float)) and isinstance(b, int)]
-            return parsed, bool(anchored_val)
-    except Exception:
-        return [], False
-
-
-def set_battery_history(history: list, is_anchored: bool) -> bool:
-    """Save battery history and estimate anchor state to Windows Registry."""
-    import json
-    try:
-        data = json.dumps(history)
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, REG_SETTINGS_KEY) as key:
-            winreg.SetValueEx(key, "BatteryHistory", 0, winreg.REG_SZ, data)
-            winreg.SetValueEx(key, "BatteryAnchored", 0, winreg.REG_DWORD, 1 if is_anchored else 0)
-        return True
-    except Exception as e:
-        print(f"Error saving battery history: {e}")
         return False
 

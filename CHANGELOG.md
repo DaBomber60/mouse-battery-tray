@@ -12,8 +12,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Sleep-Aware Polling:** The LINK 2 stops answering once the mouse sleeps on idle, which is the default. A missing reply now retains the last known level instead of reporting the battery as unavailable.
 - **Wired Battery Reporting:** Cabled, the Feinmann F01 enumerates on `PID 0x7507` with the same vendor collections and answers the same query, so wired mode now reports an actual percentage and charging state instead of a generic "wired" placeholder.
 - **Charging Bolt Icon:** The tray now draws a lightning bolt while charging, replacing the previous `Chg` text and blue percentage. The bolt fills in 20 steps, red at or below 5%, green at 100%, and blue in between. The scale is mapped across 5-95% rather than 0-100% so the usable extremes read as nearly empty and completely full, and the fill is proportioned by area rather than height so each step covers an equal amount of the tapering shape.
-- **Feinmann F01:** Added mapping for the **Feinmann F01 Noctua Edition** in wired mode (`VID 0x3710`, `PID 0x7507`).
-- **Passive Scan Guard:** Added `ACTIVE_PROTOCOL_DEVICES` so devices with dedicated query protocols are no longer claimed by the passive `find_device_path()` scan, which previously left them stuck on `--`.
+- **Pack Voltage Readout:** The tooltip now shows the current pack voltage against the highest ever recorded, persisted to the registry.
+
+### 🔥 Removed
+
+This fork is now a single-device build and is not intended for redistribution, so the following were removed:
+
+- Support for every device other than the Feinmann F01 and its LINK 2 dongle. `devices.py` no longer contains the Attack Shark, Pulsar X2/Xlite, VXE, Hitscan, Incott, Razer, WLMouse or generic Beken/CompX handlers, nor the passive `find_device_path()` scan.
+- The low battery alert and its threshold submenu.
+- The update checker, along with `updater.py` entirely.
+- The donation / support menu entry.
+- The hours-remaining estimate, its menu toggle, and the battery history persisted to the registry.
+- The tray menu's `Mouse Battery Tray <version>` entry, replaced by the connected device name. The device name is correspondingly dropped from the hover tooltip.
 
 ---
 

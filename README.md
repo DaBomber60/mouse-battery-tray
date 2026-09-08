@@ -1,135 +1,107 @@
-# Mouse Battery Tray Indicator
+# Mouse Battery Tray
 
-[![Platform](https://img.shields.io/badge/Platform-Windows_10_%7C_11-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/incconutwo/mouse-battery-tray)
-[![Release](https://img.shields.io/github/v/release/incconutwo/mouse-battery-tray?style=for-the-badge&color=28a745)](https://github.com/incconutwo/mouse-battery-tray/releases)
-[![Downloads](https://img.shields.io/github/downloads/incconutwo/mouse-battery-tray/total?style=for-the-badge&color=7952b3)](https://github.com/incconutwo/mouse-battery-tray/releases)
-[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
-[![Ko-fi](https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/incconutwo)
+A lightweight Windows system tray application that shows the live battery level of the
+**Feinmann F01** (including the Noctua Edition), connected either over 2.4 GHz via the
+**Pulsar LINK 2 Dongle** or by cable.
 
-<img src="https://github.com/user-attachments/assets/4e384838-6073-4457-827c-737c18f909f2" alt="Mouse Battery Tray Screenshot" width="150" align="right">
-
-A lightweight, standalone Windows system tray application that displays the live battery percentage of wireless gaming mice (Attack Shark, Pulsar, Razer, WLMouse Beast X family, Beken/CompX OEM, etc.) directly in the taskbar.
-
-[<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg> **Download Latest Release (MouseBatteryTray.exe)**](https://github.com/incconutwo/mouse-battery-tray/releases/latest)
-
-This tool serves as a lightweight alternative to resource-heavy official manufacturer hub software.
+This is a personal fork of [incconutwo/mouse-battery-tray](https://github.com/incconutwo/mouse-battery-tray),
+stripped down to a single device and extended with the LINK 2 protocol.
 
 ---
 
-## Supported Devices Status
+## Supported Hardware
 
-The application officially recognizes the following models, with dynamic fallback support for compatible OEM mice:
+| Device | VID | PID | Notes |
+| :--- | :--- | :--- | :--- |
+| Pulsar LINK 2 Dongle | `0x3710` | `0x5504` | 2.4 GHz |
+| Feinmann F01 / Noctua Edition | `0x3710` | `0x7507` | Cabled |
 
-| Brand | Model | 2.4G Wireless | Wired / Charging | Notes |
-| :--- | :--- | :---: | :---: | :--- |
-| **WLMouse** | Beast X / Mini Pro | 🟢 | 🟢 | 8K Receiver (`VID 0x36a7`) |
-| **Razer** | Universal Wireless Series | 🟢 | 🟢 | OpenRazer 90-Byte Query (`VID 0x1532`) |
-| | HyperPolling Dongle | 🟢 | 🟢 | Dongle (`PID 0x00b3`) |
-| **Attack Shark** | X11 / X6 / R1 / X3 | 🟢 | 🟢 | Dynamic model resolution |
-| **Pulsar** | Xlite / X2 Series | 🟢 | 🟢 | CompX OEM |
-| | 8K Dongle Gen.2 | 🟢 | 🟡 | 8K Dongle (`VID 0x3710`) |
-| | LINK 2 Dongle | 🟢 | 🟡 | Active query, vendor page `0xff02` (`PID 0x5504`) |
-| **Feinmann** | F01 / F01 Noctua Edition | 🟢 | 🟢 | Same query wired (`PID 0x7507`) or via LINK 2 dongle |
-| **VXE** | R1 Series (R1 / SE / SE+) | 🟢 | 🟢 | Dongles (`VID 0x3554`, `0x320f`, `0x3537`) |
-| **Incott** | G24 Pro | 🟢 | 🟢 | PixArt 8K Dongle (`VID 0x093a`) |
-| **Hitscan** | Hyperlight | 🟢 | 🟡 | 8K Dongle (`VID 0x3770`) |
-| **Generic** | Other Beken / CompX / WLMouse / Razer | 🟡 | 🟡 | Dynamic OEM fallback |
-
-> **Status Key:** 🟢 Supported & Verified &nbsp;|&nbsp; 🟡 Auto-Detected / Untested
+Both expose the same vendor collection and answer the same query, so wired mode reports a
+real battery level and charging state rather than a placeholder.
 
 ---
 
-## Contributing & Adding New Models
+## How It Works
 
-If your mouse is not fully recognized or is displayed as a generic device, we would love to add official support for it! 
+The dongle sends no unsolicited telemetry, so the battery is polled every 10 seconds: a
+17-byte command is written to vendor usage page `0xff02` (report ID `0x08`, command `0x04`)
+and the reply is read back off the same collection.
 
-We've made this process incredibly easy by including a standalone **Hardware ID Extractor wizard** (`dump_devices.exe`):
-
-1. Go to the [Releases page](https://github.com/incconutwo/mouse-battery-tray/releases) and download **`dump_devices.exe`** (or run `python dump_devices.py`).
-2. Run it and follow the simple 2-step prompt to scan your mouse in **Wireless (2.4G)** and **Wired** modes.
-3. The wizard will automatically generate the clean Python dictionary configuration lines for your device.
-4. Copy the generated block and paste it into a GitHub issue or Reddit reply!
-
-If you want to manually add support yourself, you can simply append your Product ID to the `SUPPORTED_DEVICES` or `WLMOUSE_DEVICES` dictionary in `devices.py`:
-
-```python
-SUPPORTED_DEVICES = {
-    # Preferred: exact (VID, PID) match
-    (0xYOUR_VID_HEX, 0xYOUR_PID_HEX): ("Your Mouse Name", "wireless"),
-    # Optional: bare PID fallback for OEM clones sharing the same firmware
-    0xYOUR_PID_HEX: ("Your Mouse Name", "wireless"),
-}
+```
+query  08 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 49
+reply  08 04 00 00 00 02 64 00 10 19 00 00 00 00 00 00 ..
+                          |  |  \-----/
+                          |  |     pack voltage, mV big-endian
+                          |  charging flag
+                          battery %, in 5% steps
 ```
 
-If your Vendor ID is not already listed in `SUPPORTED_VIDS` at the top of `devices.py`, add it there too — the HID scan in `find_device_path()` only inspects endpoints belonging to a known VID.
+Every packet ends with a checksum of `(0x55 - sum(bytes[0..15])) & 0xFF`.
+
+The percentage comes from the firmware's own estimate rather than being derived from the
+voltage. A voltage curve was tried and fitted the low 40s well but read 14 points low at
+4000 mV, whereas the firmware value tracks Pulsar's own tools to within a few percent and
+detects a full charge by charge-taper rather than voltage alone.
+
+The mouse stops answering once it sleeps on idle, which is the default behaviour. A missing
+reply therefore means "asleep", not "disconnected", and the last known level is retained.
 
 ---
 
 ## Features
 
-- **Live Numeric Percentage:** Displays the exact battery level directly on the tray icon as a colored number.
-- **Color-Coded Status:**
-  - 🟢 **Green** ($\ge 50\%$) - Healthy charge
-  - 🟠 **Orange** ($20\% - 49\%$) - Moderate charge
-  - 🔴 **Red** ($< 20\%$) - Low battery (time to charge)
-- **Auto Taskbar Theme Detection:** Automatically adapts icon colors and contrast for Windows **Light Mode** and **Dark Mode** taskbars without extra configuration options.
-- **Intelligent Hours Estimate:** Real-time battery discharge slope tracking with minimalistic tooltip predictions (e.g., `Mouse: 85% (~12h)` or `42% (~4h 30m)`), complete with a menu toggle.
-- **Configurable Low Battery Alerts:** Sends a Windows toast notification when battery reaches your chosen threshold (25%, 20%, 15%, 10%, or Disabled).
-- **Update Checker:** Asynchronously checks for new releases on GitHub directly from the right-click tray menu (`Check for Updates`).
-- **Clean Connection & Charging States:** Displays **`Chg`** (blue) while charging, **`--`** (grey) while awaiting initial reading, and **`??`** when disconnected.
-- **Start with Windows Toggle:** Right-click the icon to toggle startup behavior. It writes directly to your user registry (`HKCU`), requiring **zero Administrator (UAC) prompts**.
-- **Multi-Brand Compatibility:** Supports Razer (`VID: 0x1532`), Beken-OEM firmware (`VID: 0x1d57`), CompX/Pulsar (`VID: 0x25a7`, `0x3710`), PixArt (`VID: 0x093a`), and WLMouse (`VID: 0x36a7`).
-
+- **Live battery percentage** drawn directly on the tray icon as a coloured number.
+  - Green at 50% and above, orange from 20-49%, red below 20%.
+- **Charging bolt icon** that fills in 20 steps: red at or below 5%, green at 100%, and
+  progressively filled blue in between.
+- **Pack voltage in the tooltip**, shown as current against the highest ever recorded.
+- **Automatic light/dark taskbar theming.**
+- **Start with Windows toggle**, written to `HKCU` so it needs no admin rights.
 
 ---
 
 ## Installation
 
-### Prerequisites
-Make sure you have [Python 3.10+](https://www.python.org/) installed and added to your system PATH.
+Requires [Python 3.10+](https://www.python.org/).
 
-### Install Dependencies
-Open your terminal (Command Prompt or PowerShell) and run:
-```bash
+```powershell
 pip install hidapi pystray pillow
 ```
 
----
+## Running
 
-## How to Run
+```powershell
+pythonw battery_tray.pyw   # silent background
+python battery_tray.pyw    # with a console, for debugging
+```
 
-1. **Run in Background (Recommended):**
-   Run the file using `pythonw` (or double-click the `.pyw` extension) to start it silently in the background:
-   ```bash
-   pythonw battery_tray.pyw
-   ```
-2. **Run in Terminal (Debugging):**
-   If you want to view console logs:
-   ```bash
-   python battery_tray.pyw
-   ```
+## Building an Executable
+
+```powershell
+pip install pyinstaller
+python -m PyInstaller --onefile --noconsole --name MouseBatteryTray --collect-all hid battery_tray.pyw
+```
+
+`--collect-all hid` is required. Without it the build succeeds but the executable exits
+immediately, because `hidapi` ships a compiled extension the dependency scan misses and
+`--noconsole` discards the traceback.
 
 ---
 
 ## Troubleshooting
 
-- **Icon Stays on `??`:** 
-  Ensure the mouse is turned on, in wireless mode (using the 2.4G adapter), and not asleep. Wake the mouse by moving it around for the first battery status packet to transmit.
-- **Permissions Issue:**
-  The app runs entirely in user-space and does not require admin rights. If the tray icon doesn't update, check if another exclusive tool (like the official software) is currently open and locking the USB receiver port.
+- **Icon stays on `??`** — the dongle is not plugged in and the mouse is not cabled.
+  `??` means no supported device was found at all.
+- **Icon shows `?`** — the device was found but returned no reading. Normally this only
+  appears before the first successful poll.
+- **Tooltip stops updating** — check that Pulsar's own software is not open and holding the
+  device.
 
 ---
 
-## Acknowledgments & Credits
+## Credits
 
-Special thanks to all community members who contributed device ID mappings and hardware dumps *(if I accidentally missed your name, please open an issue or reply so I can add you!)*:
+- **[incconutwo](https://github.com/incconutwo)** — original Mouse Battery Tray project.
+- **[@len0c](https://github.com/len0c)** — HID protocol groundwork in the upstream project.
 
-- **[@len0c](https://github.com/len0c)** – Reverse-engineered HID protocol handling and initial integration for the **WLMouse Beast X** series.
-- **[@HarukaYamamoto0](https://github.com/HarukaYamamoto0)** – Shared additional Beken OEM model device ID mappings ([attack-shark-x11-driver](https://github.com/HarukaYamamoto0/attack-shark-x11-driver)).
-- **[@CptNinja](https://github.com/CptNinja)** – Provided hardware ID dump for the **Pulsar 8K Dongle Gen.2** (`VID 0x3710`, `PID 0x5406`).
-- **[@nzeck1](https://github.com/nzeck1)** – Provided hardware ID dump for the **VXE R1 Series** (R1 / R1 SE / R1 SE+).
-- **[@Vinsmok3](https://github.com/Vinsmok3)** – Provided hardware ID dump for the **Hitscan Hyperlight** (`VID 0x3770`, `PID 0x0300`).
-- **u/Monophonotronic** – Provided hardware ID dump for the **Incott G24 Pro** (`VID 0x093a`, `PID 0x522c` / `0x622c`).
-- **u/djnemoson** – Provided hardware ID dump for the **Pulsar X2 Wireless** (`VID 0x25a7`, `PID 0xfa7c` / `0xfa7b`).
-- **u/MarcBelmaati** – Provided hardware ID dump for the **Razer Wireless / HyperPolling Dongle** (`VID 0x1532`, `PID 0x00b3` / `0x00a5`).
-- **u/TwistedVincenzo** – Provided hardware ID dump for the **Pulsar Xlite Wireless**.
+Licensed under the MIT License. See [LICENSE](LICENSE).
