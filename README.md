@@ -29,7 +29,7 @@ The application officially recognizes the following models, with dynamic fallbac
 | **Pulsar** | Xlite / X2 Series | 🟢 | 🟢 | CompX OEM |
 | | 8K Dongle Gen.2 | 🟢 | 🟡 | 8K Dongle (`VID 0x3710`) |
 | | LINK 2 Dongle | 🟢 | 🟡 | Active query, vendor page `0xff02` (`PID 0x5504`) |
-| **Feinmann** | F01 / F01 Noctua Edition | 🟢 | 🟢 | Via Pulsar LINK 2 Dongle (`PID 0x7507` wired) |
+| **Feinmann** | F01 / F01 Noctua Edition | 🟢 | 🟢 | Same query wired (`PID 0x7507`) or via LINK 2 dongle |
 | **VXE** | R1 Series (R1 / SE / SE+) | 🟢 | 🟢 | Dongles (`VID 0x3554`, `0x320f`, `0x3537`) |
 | **Incott** | G24 Pro | 🟢 | 🟢 | PixArt 8K Dongle (`VID 0x093a`) |
 | **Hitscan** | Hyperlight | 🟢 | 🟡 | 8K Dongle (`VID 0x3770`) |

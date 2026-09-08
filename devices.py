@@ -8,7 +8,7 @@ from typing import Optional, Tuple, List
 SUPPORTED_VIDS = {0x1d57, 0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770, 0x1532}
 
 # Handled by dedicated active-query protocols below; the passive scan must not claim them.
-ACTIVE_PROTOCOL_DEVICES = {(0x3710, 0x5504)}
+ACTIVE_PROTOCOL_DEVICES = {(0x3710, 0x5504), (0x3710, 0x7507)}
 
 BEKEN_DEVICE_NAMES = {
     0x55: "Attack Shark X11",
@@ -49,11 +49,6 @@ SUPPORTED_DEVICES = {
     # Pulsar 8K Dongle Gen.2 (Thanks to @CptNinja)
     (0x3710, 0x5406): ("Pulsar 8K Dongle Gen.2", "wireless"),
     0x5406: ("Pulsar 8K Dongle Gen.2", "wireless"),
-
-    # Feinmann F01 (incl. Noctua Edition) in wired mode.
-    # Its wireless dongle (0x5504) uses the Pulsar LINK 2 protocol further down.
-    (0x3710, 0x7507): ("Feinmann F01 Noctua Edition", "wired"),
-    0x7507: ("Feinmann F01 Noctua Edition", "wired"),
 
     # VXE R1 Series (R1 / SE / SE+) (Thanks to @nzeck1)
     (0x3554, 0xf58e): ("VXE R1 Series", "wireless"),
@@ -372,6 +367,9 @@ def read_razer_battery(path: str) -> Tuple[Optional[int], Optional[bool]]:
 #
 # The mouse stops answering once it sleeps on idle, so a missing reply means
 # "asleep", not "disconnected" -- callers should keep the previous reading.
+#
+# Cabled, the mouse enumerates on its own PID with the same vendor collections
+# and answers the same query, so wired mode reports a real level plus charging.
 # =============================================================================
 PULSAR_VID = 0x3710
 PULSAR_USAGE_PAGE = 0xff02
@@ -380,6 +378,7 @@ PULSAR_CMD_BATTERY = 0x04
 
 PULSAR_DEVICES = {
     0x5504: "Pulsar LINK 2 Dongle",
+    0x7507: "Feinmann F01 Noctua Edition",
 }
 
 
